@@ -854,6 +854,8 @@ impl<B: MmcBus, D: DelayNs> BusAdapter<B, D> {
     }
 
     pub async fn init_idle(&mut self) -> Result<(), MmcError> {
+        // CMD0 below returns every card to RCA 0, so forget the address of the card before.
+        self.rca = 0;
         // While the SD/SDIO card or eMMC is in identification mode,
         // the SDMMC_CK frequency must be no more than 400 kHz.
         self.bus.init_idle(INIT_FREQ).await?;
@@ -1062,6 +1064,8 @@ impl<A: Addressable, B: MmcBus, D: DelayNs, const BLOCK_SIZE: usize>
         let freq = freq.clamp(0, self.bus.bus.supports_frequency());
         let bus_width = self.bus.bus.supports_bus_width();
 
+        // A card identified afresh has no transfer open for a stop to end.
+        self.error = false;
         self.bus.init_idle().await?;
         (self.info, self.freq) =
             A::acquire(&mut self.bus, block_size(BLOCK_SIZE), bus_width, freq).await?;
